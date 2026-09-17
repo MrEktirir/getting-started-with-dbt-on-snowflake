@@ -1,39 +1,121 @@
-# Getting Started with dbt Projects on Snowflake
+# Native dbt Data Pipeline on Snowflake
 
 ## Overview
 
-This repository contains an example dbt project for [dbt Projects on Snowflake](https://docs.snowflake.com/en/user-guide/data-engineering/dbt-projects-on-snowflake). It uses the fictitious **Tasty Bytes** food truck brand as sample data and walks through environment setup, data modeling, CI/CD, and scheduling — all running natively inside Snowflake.
+This project demonstrates an end-to-end dbt data pipeline running natively inside Snowflake using the Tasty Bytes dataset.
 
-This repository is based on these Snowflake tutorials:
-- [Get started with dbt Projects on Snowflake](https://docs.snowflake.com/en/user-guide/tutorials/dbt-projects-on-snowflake-getting-started-tutorial)
-- [Set up CI/CD for dbt Projects on Snowflake](https://docs.snowflake.com/en/user-guide/tutorials/dbt-projects-on-snowflake-ci-cd-tutorial)
+The project was implemented using Snowflake Workspaces and dbt Projects on Snowflake, covering source data ingestion, dbt modeling, testing, development and production environments, native deployment, and scheduled execution.
 
-## What's Included
+The implementation is based on Snowflake's official **Getting Started with dbt Projects on Snowflake** tutorial and was adapted and validated in a Snowflake trial environment.
 
-### Setup Scripts (`setup/`)
+## Architecture
 
-- **`tasty_bytes_setup.sql`** — Creates the warehouse, database, schemas, GitHub integration, network rules, and loads the Tasty Bytes source data from S3 into raw tables.
-- **`ci_cd_setup.sql`** — Creates a GitHub Actions service user with OIDC authentication and optional network policies for CI/CD pipelines.
+AWS S3
+   ↓
+Snowflake External Stage
+   ↓
+RAW Tables
+   ↓
+dbt Staging Models (Views)
+   ↓
+dbt Mart Models (Tables)
+   ↓
+DEV / PROD
+   ↓
+Deployed Snowflake dbt Project
+   ↓
+Snowflake Scheduled Task
 
-### dbt Project (`tasty_bytes_dbt_demo/`)
+## Technologies
 
-- **Staging models** — Views that clean and rename columns from raw source tables (orders, trucks, menus, locations, franchises, customer loyalty).
-- **Mart models** — Tables that aggregate business metrics: `orders`, `customer_loyalty_metrics`, and `sales_metrics_by_location` (Python model).
-- **Custom macros** — Schema name generation for multi-environment deployments (dev/prod).
-- **Generic tests** — Reusable test for validating positive amounts.
+- Snowflake
+- dbt Projects on Snowflake
+- Snowflake Workspaces
+- Snowflake Git Integration
+- Snowflake Tasks
+- SQL
+- Python / Snowpark
+- AWS S3
+- GitHub
 
-### CI/CD (`.github/workflows/`)
+## Data Pipeline
 
-- **`incoming_pr.yml`** — Runs dbt checks against a dev environment when a PR is opened.
-- **`pr_merged.yml`** — Deploys the dbt project to production when a PR is merged.
+Source data is loaded from AWS S3 into the `RAW` schema using a Snowflake external stage and `COPY INTO`.
 
-### Scheduling (`schedules.sql`)
+The dbt project contains:
 
-Task definitions for running the dbt project on a schedule using Snowflake Tasks.
+### Staging Layer
 
-## Quick Start
+Eight staging models are materialized as **views** and provide the transformation layer between the raw source tables and downstream marts.
 
-1. Fork this repository.
-2. Run `tasty_bytes_setup.sql` in a Snowflake worksheet to create the environment and load source data.
-3. Create a [workspace in Snowsight](https://docs.snowflake.com/en/user-guide/ui-snowsight/workspaces) connected to your fork.
-4. Run `dbt deps`, then `dbt run` from the workspace.
+### Mart Layer
+
+Three models are materialized as **tables**:
+
+- `orders`
+- `customer_loyalty_metrics`
+- `sales_metrics_by_location`
+
+The `sales_metrics_by_location` model is implemented as a Python dbt model using Snowpark.
+
+## Data Quality
+
+The project includes dbt data tests covering:
+
+- `not_null`
+- `unique`
+- `relationships`
+- custom generic tests
+
+The validated development build completed successfully with:
+
+- 11 models
+- 50 data tests
+- 61 total build operations
+- 0 errors
+
+## Environments
+
+Two Snowflake schemas are used as dbt targets:
+
+- `DEV` — development and validation
+- `PROD` — production execution
+
+The project was first compiled, executed, tested, and built against the development environment before being deployed and executed against production.
+
+## Native dbt Deployment
+
+The dbt project is deployed as a native Snowflake `DBT PROJECT` object:
+
+`TASTY_BYTES_DBT_DB.INTEGRATIONS.TASTY_BYTES_DBT_PROJECT`
+
+The deployed project uses the `prod` target by default.
+
+A production execution was successfully validated across all 11 models.
+
+## Scheduling
+
+A Snowflake Task named:
+
+`CUSTOMER_LOYALTY_METRICS_TASK`
+
+was created to execute:
+
+`dbt run --select customer_loyalty_metrics`
+
+on the `dev` target every 12 hours.
+
+## Repository Structure
+
+```text
+tasty_bytes_dbt_demo/
+├── models/
+│   ├── staging/
+│   └── marts/
+├── macros/
+├── tests/
+├── setup/
+├── dbt_project.yml
+├── packages.yml
+├── profiles.yml
+└── schedules.sql
