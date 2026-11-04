@@ -33,3 +33,27 @@ jobs:
         run: |
           snow connection test -x
           snow sql -x -q "SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE();"
+
+      - name: Deploy dbt project to DEV
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: GITHUB_ACTIONS_CI_USER
+        run: |
+          snow dbt deploy TASTY_BYTES_DBT_CI \
+            --source tasty_bytes_dbt_demo \
+            --profiles-dir tasty_bytes_dbt_demo \
+            --database TASTY_BYTES_DBT_DB \
+            --schema DEV \
+            --warehouse COMPUTE_WH \
+            --default-target dev
+
+      - name: Run dbt tests in DEV
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: GITHUB_ACTIONS_CI_USER
+        run: |
+          snow sql -x \
+            --database TASTY_BYTES_DBT_DB \
+            --schema DEV \
+            --warehouse COMPUTE_WH \
+            -q "EXECUTE DBT PROJECT TASTY_BYTES_DBT_DB.DEV.TASTY_BYTES_DBT_CI ARGS = 'test --target dev';"

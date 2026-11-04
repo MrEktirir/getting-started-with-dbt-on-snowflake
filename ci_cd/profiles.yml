@@ -1,0 +1,15 @@
+tasty_bytes:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: GITHUB_ACTIONS_CI_USER
+      role: GITHUB_ACTIONS_CI_ROLE
+      authenticator: workload_identity
+      workload_identity_provider: OIDC
+      token: "{{ env_var('SNOWFLAKE_TOKEN') }}"
+      database: TASTY_BYTES_DBT_DB
+      warehouse: COMPUTE_WH
+      schema: DEV
+      threads: 4
