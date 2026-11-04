@@ -39,7 +39,7 @@ jobs:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
           SNOWFLAKE_USER: GITHUB_ACTIONS_CI_USER
         run: |
-          snow dbt deploy TASTY_BYTES_DBT_CI \
+          snow dbt deploy TASTY_BYTES_DBT_CI -x \
             --source tasty_bytes_dbt_demo \
             --profiles-dir tasty_bytes_dbt_demo \
             --database TASTY_BYTES_DBT_DB \
