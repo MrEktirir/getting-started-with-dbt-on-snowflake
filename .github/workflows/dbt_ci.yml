@@ -1,0 +1,35 @@
+name: dbt CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Snowflake CLI and configure OIDC
+        uses: snowflakedb/snowflake-actions@v3
+        with:
+          use-oidc: true
+
+      - name: Verify DEV Snowflake connection
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: GITHUB_ACTIONS_CI_USER
+        run: |
+          snow connection test -x
+          snow sql -x -q "SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE();"
