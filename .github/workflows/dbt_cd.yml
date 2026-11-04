@@ -1,6 +1,9 @@
 name: dbt CD
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
