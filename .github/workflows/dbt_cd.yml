@@ -1,0 +1,67 @@
+name: dbt CD
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Snowflake CLI and configure OIDC
+        uses: snowflakedb/snowflake-actions@v3
+        with:
+          use-oidc: true
+
+      - name: Verify PROD Snowflake connection
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: GITHUB_ACTIONS_SERVICE_USER
+        run: |
+          snow connection test -x
+          snow sql -x -q "SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE();"
+
+      - name: Deploy dbt project to PROD
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: GITHUB_ACTIONS_SERVICE_USER
+        run: |
+          snow dbt deploy TASTY_BYTES_DBT_PROD -x \
+            --source tasty_bytes_dbt_demo \
+            --profiles-dir tasty_bytes_dbt_demo \
+            --database TASTY_BYTES_DBT_DB \
+            --schema PROD \
+            --warehouse COMPUTE_WH \
+            --default-target prod
+
+      - name: Run dbt models in PROD
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: GITHUB_ACTIONS_SERVICE_USER
+        run: |
+          snow sql -x \
+            --database TASTY_BYTES_DBT_DB \
+            --schema PROD \
+            --warehouse COMPUTE_WH \
+            -q "EXECUTE DBT PROJECT TASTY_BYTES_DBT_DB.PROD.TASTY_BYTES_DBT_PROD ARGS = 'run --target prod';"
+
+      - name: Run dbt tests in PROD
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: GITHUB_ACTIONS_SERVICE_USER
+        run: |
+          snow sql -x \
+            --database TASTY_BYTES_DBT_DB \
+            --schema PROD \
+            --warehouse COMPUTE_WH \
+            -q "EXECUTE DBT PROJECT TASTY_BYTES_DBT_DB.PROD.TASTY_BYTES_DBT_PROD ARGS = 'test --target prod';"
