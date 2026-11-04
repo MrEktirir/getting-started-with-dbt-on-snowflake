@@ -1,0 +1,20 @@
+target: dev
+outputs:
+  dev:
+    account: '_'
+    database: tasty_bytes_dbt_db
+    schema: dev
+    role: GITHUB_ACTIONS_CI_ROLE
+    type: snowflake
+    warehouse: COMPUTE_WH
+    user: '_'
+    threads: 8
+  prod:
+    account: '_'
+    database: tasty_bytes_dbt_db
+    schema: prod
+    role: GITHUB_ACTIONS_CICD_ROLE
+    type: snowflake
+    warehouse: COMPUTE_WH
+    user: '_'
+    threads: 8
